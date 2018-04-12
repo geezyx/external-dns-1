@@ -423,16 +423,16 @@ func canonicalHostedZone(hostname string) string {
 }
 
 // genGeoLocation takes an endpoint and generates a route53 geolocation from it
-func genGeoLocation(geoLocation *endpoint.Endpoint) *route53.GeoLocation {
+func genGeoLocation(ep *endpoint.Endpoint) *route53.GeoLocation {
 	result := &route53.GeoLocation{}
-	if geoLocation.GeoLocation.ContinentCode != "" {
-		result.SetContinentCode(geoLocation.GeoLocation.ContinentCode)
+	if ep.GeoLocation.ContinentCode != "" {
+		result.SetContinentCode(ep.GeoLocation.ContinentCode)
 	}
-	if geoLocation.GeoLocation.CountryCode != "" {
-		result.CountryCode = aws.String(geoLocation.GeoLocation.CountryCode)
+	if ep.GeoLocation.CountryCode != "" {
+		result.SetCountryCode(ep.GeoLocation.CountryCode)
 	}
-	if geoLocation.GeoLocation.SubdivisionCode != "" {
-		result.SubdivisionCode = aws.String(geoLocation.GeoLocation.SubdivisionCode)
+	if ep.GeoLocation.SubdivisionCode != "" {
+		result.SetSubdivisionCode(ep.GeoLocation.SubdivisionCode)
 	}
 	return result
 }

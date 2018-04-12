@@ -20,7 +20,8 @@ import (
 	"fmt"
 	"strings"
 	"regexp"
-	"github.com/prometheus/common/log"
+	
+	log "github.com/sirupsen/logrus"
 )
 
 const (
