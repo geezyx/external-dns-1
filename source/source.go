@@ -36,6 +36,12 @@ const (
 	ttlAnnotationKey = "external-dns.alpha.kubernetes.io/ttl"
 	// The value of the controller annotation so that we feel responsible
 	controllerAnnotationValue = "dns-controller"
+	// The annotations used for geolocation settings
+	geoContinentCodeAnnotationKey = "external-dns.alpha.kubernetes.io/continentcode"
+	geoCountryCodeAnnotationKey = "external-dns.alpha.kubernetes.io/countrycode"
+	geoSubdivisionCodeAnnotationKey = "external-dns.alpha.kubernetes.io/subdivisioncode"
+	// The annotation used to specify the default geolocation entry ('*' set for continent and country)
+	geoDefaultAnnotationKey = "external-dns.alpha.kubernetes.io/default"
 )
 
 const (

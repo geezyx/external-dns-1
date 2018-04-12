@@ -19,6 +19,8 @@ package endpoint
 import (
 	"fmt"
 	"strings"
+	"regexp"
+	"github.com/prometheus/common/log"
 )
 
 const (
@@ -52,6 +54,14 @@ type Endpoint struct {
 	RecordTTL TTL
 	// Labels stores labels defined for the Endpoint
 	Labels map[string]string
+	// GeoLocation provides the geolocation routing information for an endpoint
+	GeoLocation GeoLocation
+}
+
+type GeoLocation struct {
+	ContinentCode string
+	CountryCode string
+	SubdivisionCode string
 }
 
 // NewEndpoint initialization method to be used to create an endpoint
@@ -67,6 +77,7 @@ func NewEndpointWithTTL(dnsName, target, recordType string, ttl TTL) *Endpoint {
 		RecordType: recordType,
 		Labels:     map[string]string{},
 		RecordTTL:  ttl,
+		GeoLocation: GeoLocation{},
 	}
 }
 
@@ -77,6 +88,43 @@ func (e *Endpoint) MergeLabels(labels map[string]string) {
 			e.Labels[k] = v
 		}
 	}
+}
+
+// SetContinentCode validates and sets the ContinentCode value
+func (e *Endpoint) SetContinentCode(continentCode string) error {
+	if matched, _ := regexp.Match("^(AF|AN|AS|EU|OC|NA|SA|\\*)?$", []byte(continentCode)); matched {
+		e.GeoLocation.ContinentCode = continentCode
+	} else {
+		err := fmt.Errorf("%s is not a valid ContinentCode format, expected 'AF|AN|AS|EU|OC|NA|SA|*' or empty string", continentCode)
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// SetCountryCode validates and sets the CountryCode value
+func (e *Endpoint) SetCountryCode(countryCode string) error {
+	if matched, _ := regexp.Match("^([A-Z]{1,2}|\\*)?$", []byte(countryCode)); matched {
+		e.GeoLocation.CountryCode = countryCode
+	} else {
+		err := fmt.Errorf("%s is not a valid SubdivisionCode format, expected 1-2 uppercase characters, *  or empty string", countryCode)
+		log.Error(err)
+		return err
+	}
+	return nil
+}
+
+// SetSubdivisionCode validates and sets the SubdivisionCode value
+func (e *Endpoint) SetSubdivisionCode(subdivisionCode string) error {
+	if matched, _ := regexp.Match("^([A-Z]{1,3})?$", []byte(subdivisionCode)); matched {
+		e.GeoLocation.SubdivisionCode = subdivisionCode
+	} else {
+		err := fmt.Errorf("%s is not a valid SubdivisionCode format, expected 1-3 uppercase characters or empty string", subdivisionCode)
+		log.Error(err)
+		return err
+
+	}
+	return nil
 }
 
 func (e *Endpoint) String() string {

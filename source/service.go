@@ -173,7 +173,33 @@ func (sc *serviceSource) endpoints(svc *v1.Service) []*endpoint.Endpoint {
 
 	hostnameList := strings.Split(strings.Replace(hostnameAnnotation, " ", "", -1), ",")
 	for _, hostname := range hostnameList {
-		endpoints = append(endpoints, sc.generateEndpoints(svc, hostname)...)
+
+		// Hack for GeoLocation - check for the three geolocation annotations and add them to the endpoints
+		eps := sc.generateEndpoints(svc, hostname)
+		for _, ep := range eps {
+			if geoContinentCodeAnnotation, exists := svc.Annotations[geoContinentCodeAnnotationKey]; exists {
+				ep.SetContinentCode(geoContinentCodeAnnotation)
+			}
+			if geoCountryCodeAnnotation, exists := svc.Annotations[geoCountryCodeAnnotationKey]; exists {
+				ep.SetCountryCode(geoCountryCodeAnnotation)
+			}
+			if geoSubdivisionCodeAnnotation, exists := svc.Annotations[geoSubdivisionCodeAnnotationKey]; exists {
+				ep.SetSubdivisionCode(geoSubdivisionCodeAnnotation)
+			}
+		}
+
+		endpoints = append(endpoints, eps...)
+
+		// Hack for GeoLocation - check for the geolocation default annotation, and set the appropriate geo values
+		if _, exists := svc.Annotations[geoDefaultAnnotationKey]; exists {
+			eps := sc.generateEndpoints(svc, hostname)
+			for _, ep := range eps {
+				ep.SetContinentCode("*")
+				ep.SetCountryCode("*")
+			}
+
+			endpoints = append(endpoints, eps...)
+		}
 	}
 
 	return endpoints

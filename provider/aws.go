@@ -165,11 +165,21 @@ func (p *AWSProvider) Records() (endpoints []*endpoint.Endpoint, _ error) {
 			}
 
 			for _, rr := range r.ResourceRecords {
-				endpoints = append(endpoints, endpoint.NewEndpointWithTTL(wildcardUnescape(aws.StringValue(r.Name)), aws.StringValue(rr.Value), aws.StringValue(r.Type), ttl))
+				ep := endpoint.NewEndpointWithTTL(wildcardUnescape(aws.StringValue(r.Name)), aws.StringValue(rr.Value), aws.StringValue(r.Type), ttl)
+				// Hack for GeoLocation - if geolocation has values, parse the geolocation information into the endpoint
+				if r.GeoLocation != nil {
+					parseGeoLocation(ep, r.GeoLocation)
+				}
+				endpoints = append(endpoints, ep)
 			}
 
 			if r.AliasTarget != nil {
-				endpoints = append(endpoints, endpoint.NewEndpointWithTTL(wildcardUnescape(aws.StringValue(r.Name)), aws.StringValue(r.AliasTarget.DNSName), endpoint.RecordTypeCNAME, ttl))
+				ep := endpoint.NewEndpointWithTTL(wildcardUnescape(aws.StringValue(r.Name)), aws.StringValue(r.AliasTarget.DNSName), endpoint.RecordTypeCNAME, ttl)
+				// Hack for GeoLocation - if geolocation has values, parse the geolocation information into the endpoint
+				if r.GeoLocation != nil {
+					parseGeoLocation(ep, r.GeoLocation)
+				}
+				endpoints = append(endpoints, ep)
 			}
 		}
 
@@ -245,6 +255,8 @@ func (p *AWSProvider) submitChanges(changes []*route53.Change) error {
 					Changes: limCs,
 				},
 			}
+
+			log.Info(params)
 
 			if _, err := p.client.ChangeResourceRecordSets(params); err != nil {
 				log.Error(err) //TODO(ideahitme): consider changing the interface in cases when this error might be a concern for other components
@@ -361,7 +373,6 @@ func newChange(action string, endpoint *endpoint.Endpoint) *route53.Change {
 			Name: aws.String(endpoint.DNSName),
 		},
 	}
-
 	if isAWSLoadBalancer(endpoint) {
 		change.ResourceRecordSet.Type = aws.String(route53.RRTypeA)
 		change.ResourceRecordSet.AliasTarget = &route53.AliasTarget{
@@ -381,6 +392,11 @@ func newChange(action string, endpoint *endpoint.Endpoint) *route53.Change {
 				Value: aws.String(endpoint.Target),
 			},
 		}
+	}
+	// If geolocation information exists, add it to the change
+	if endpoint.GeoLocation.ContinentCode != "" || endpoint.GeoLocation.CountryCode != ""  || endpoint.GeoLocation.SubdivisionCode != "" {
+		geoLocation := genGeoLocation(endpoint)
+		change.ResourceRecordSet.SetGeoLocation(geoLocation)
 	}
 
 	return change
@@ -404,4 +420,31 @@ func canonicalHostedZone(hostname string) string {
 	}
 
 	return ""
+}
+
+// genGeoLocation takes an endpoint and generates a route53 geolocation from it
+func genGeoLocation(geoLocation *endpoint.Endpoint) *route53.GeoLocation {
+	result := &route53.GeoLocation{}
+	if geoLocation.GeoLocation.ContinentCode != "" {
+		result.SetContinentCode(geoLocation.GeoLocation.ContinentCode)
+	}
+	if geoLocation.GeoLocation.CountryCode != "" {
+		result.CountryCode = aws.String(geoLocation.GeoLocation.CountryCode)
+	}
+	if geoLocation.GeoLocation.SubdivisionCode != "" {
+		result.SubdivisionCode = aws.String(geoLocation.GeoLocation.SubdivisionCode)
+	}
+	return result
+}
+
+func parseGeoLocation(ep *endpoint.Endpoint, location *route53.GeoLocation) {
+	if location.ContinentCode != nil {
+		ep.SetContinentCode(aws.StringValue(location.ContinentCode))
+	}
+	if location.CountryCode != nil {
+		ep.SetCountryCode(aws.StringValue(location.CountryCode))
+	}
+	if location.SubdivisionCode != nil {
+		ep.SetSubdivisionCode(aws.StringValue(location.SubdivisionCode))
+	}
 }

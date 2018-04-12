@@ -66,9 +66,10 @@ func (p *Plan) Calculate() *Plan {
 		}
 
 		targetChanged := targetChanged(desired, current)
+		geoLocationChanged := geoLocationChanged(desired, current)
 		shouldUpdateTTL := shouldUpdateTTL(desired, current)
 
-		if !targetChanged && !shouldUpdateTTL {
+		if !targetChanged && !geoLocationChanged && !shouldUpdateTTL {
 			log.Debugf("Skipping endpoint %v because nothing has changed", desired)
 			continue
 		}
@@ -78,6 +79,12 @@ func (p *Plan) Calculate() *Plan {
 
 		if targetChanged {
 			desired.RecordType = current.RecordType // inherit the type from the dns provider
+		}
+
+		if geoLocationChanged {
+			desired.SetContinentCode(current.GeoLocation.ContinentCode)
+			desired.SetCountryCode(current.GeoLocation.CountryCode)
+			desired.SetSubdivisionCode(current.GeoLocation.SubdivisionCode)
 		}
 
 		if !shouldUpdateTTL {
@@ -111,6 +118,12 @@ func (p *Plan) Calculate() *Plan {
 
 func targetChanged(desired, current *endpoint.Endpoint) bool {
 	return desired.Target != current.Target
+}
+
+func geoLocationChanged(desired, current *endpoint.Endpoint) bool {
+	return desired.GeoLocation.ContinentCode != current.GeoLocation.ContinentCode ||
+		desired.GeoLocation.CountryCode != current.GeoLocation.CountryCode ||
+		desired.GeoLocation.SubdivisionCode != current.GeoLocation.SubdivisionCode
 }
 
 func shouldUpdateTTL(desired, current *endpoint.Endpoint) bool {
